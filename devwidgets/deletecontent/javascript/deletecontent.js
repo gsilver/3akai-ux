@@ -44,8 +44,6 @@ require(["jquery", "sakai/sakai.api.core"], function($, sakai) {
         // Global variables //
         //////////////////////
 
-        var $rootel = $("#" + tuid);
-
         var pathsToDelete = false;
         var contentIManage = false;
         var contentIView = false;
@@ -57,7 +55,7 @@ require(["jquery", "sakai/sakai.api.core"], function($, sakai) {
         // CSS Selectors //
         ///////////////////
 
-        var $deletecontent_dialog = $("#deletecontent_dialog", $rootel);
+        var $deletecontent_dialog = $("#deletecontent_dialog");
 
         ////////////////////////////
         // Batch request handling //
@@ -231,14 +229,13 @@ require(["jquery", "sakai/sakai.api.core"], function($, sakai) {
                 });
                 sakai.api.Server.batch(batchRequest, function (success, data) {
                     for (var i = 0; i < data.results.length; i++) {
-                        if (data.results.hasOwnProperty(i)) {
-                            var members = $.parseJSON(data.results[i].body);
-                            for (var ii = 0; ii < members.length; ii++){
-                                var member = members[ii].userid;
-                                if ($.inArray(member, userGroupIds) === -1 && member !== sakai.data.me.user.userid &&
-                                member !== context){
-                                    userGroupIds.push(member);
-                                }
+                        var members = $.parseJSON(data.results[i].body);
+                        for (var ii = 0; ii < members.length; ii++) {
+                            var member = members[ii].userid || members[ii].groupid;
+                            if ($.inArray(member, userGroupIds) === -1 &&
+                                member !== sakai.data.me.user.userid &&
+                                member !== context) {
+                                userGroupIds.push(member);
                             }
                         }
                     }
@@ -293,9 +290,10 @@ require(["jquery", "sakai/sakai.api.core"], function($, sakai) {
             sakai.api.Server.batch(batchRequests, function (success, data) {
                 var profileInfo = [];
                 for (var i = 0; i < data.results.length; i++){
-                    if (data.results[i].success){
+                    if (data.results[i].success && data.results[i].status !== 404) {
                         // Process pseudoGroups
                         var profile = $.parseJSON(data.results[i].body);
+                        profile.showLink = true;
                         if (sakai.api.Content.Collections.isCollection(profile)){
                             profile.collectionid = sakai.api.Content.Collections.getCollectionPoolId(profile);
                         } else if (profile["sakai:excludeSearch"] === "true"){
@@ -304,6 +302,19 @@ require(["jquery", "sakai/sakai.api.core"], function($, sakai) {
                             profile.groupid = splitOnDash.splice(0, splitOnDash.length - 1).join("-");
                         }
                         profileInfo.push(profile);
+                    } else {
+                        var privateProfile = {
+                            showLink: false
+                        };
+                        if (data.results[i].url.substring(0,4) === '/~c-') {
+                            privateProfile.collectionid = true;
+                            privateProfile['sakai:group-title'] =
+                                sakai.api.i18n.getValueForKey('PRIVATE_COLLECTION', 'deletecontent');
+                        } else {
+                            privateProfile['sakai:group-title'] =
+                                sakai.api.i18n.getValueForKey('PRIVATE_USER_GROUP', 'deletecontent');
+                        }
+                        profileInfo.push(privateProfile);
                     }
                 }
                 $("#deletecontent_used_by_others_container").html(sakai.api.Util.TemplateRenderer("deletecontent_used_by_others_template", {
@@ -514,7 +525,7 @@ require(["jquery", "sakai/sakai.api.core"], function($, sakai) {
         // External event binding //
         ////////////////////////////
 
-        $(window).bind("init.deletecontent.sakai", load);
+        $(window).unbind("init.deletecontent.sakai").bind("init.deletecontent.sakai", load);
 
         init();
     };
