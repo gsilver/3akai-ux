@@ -1299,6 +1299,15 @@ require(['jquery', 'underscore', 'sakai/sakai.api.core', 'jquery-ui'], function(
             }
         });
 
+        var resetPosition = function() {
+            if ($('#lhnavigation_submenu').is(':visible')){
+                var newPos= $('#lhnavigation_container').position().left + $('#lhnavigation_container').width() - $('#lhnavigation_submenu').width() + 5;
+                $('#lhnavigation_submenu').css('left',newPos + 'px');
+            }
+        };
+        
+        $(window).resize(resetPosition);
+
         ////////////////////////////
         // External event binding //
         ////////////////////////////
