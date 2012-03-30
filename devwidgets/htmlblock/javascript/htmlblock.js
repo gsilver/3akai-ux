@@ -18,7 +18,7 @@
 
 // load the master sakai object to access all Sakai OAE API methods
 require(['jquery', 'sakai/sakai.api.core'], function($, sakai) {
-     
+
     /**
      * @name sakai.htmlblock
      *
@@ -53,8 +53,10 @@ require(['jquery', 'sakai/sakai.api.core'], function($, sakai) {
          * button bar, so all the text is visible
          */
         var editorFocus = function() {
+            $('.mceExternalToolbar').hide();
             $('#inserterbar_widget #inserterbar_tinymce_container').show();
             $('.contentauthoring_cell_element_actions').hide();
+            $toolbar.show();
         };
 
         var editorSetup = function(ed) {
@@ -103,6 +105,9 @@ require(['jquery', 'sakai/sakai.api.core'], function($, sakai) {
                     // Additional event handlers
                     setup : editorSetup
                 });
+                // Hide the widget controls
+                var $containingCell = $('.htmlblock_widget', $rootel).parents('.contentauthoring_cell_element');
+                $('.contentauthoring_cell_element_actions', $containingCell).addClass('s3d-force-hidden');
             }
         };
 
@@ -120,15 +125,21 @@ require(['jquery', 'sakai/sakai.api.core'], function($, sakai) {
             // Cache the editor elements
             $editor = $('#' + editorId + '_ifr');
             $toolbar = $('#' + editorId + '_external').hide();
-            // Hide the widget controls
-            $('.contentauthoring_cell_element_actions').hide();
             // Move the toolbar to the inserterbar widget
             $('#inserterbar_widget #inserterbar_tinymce_container').append($toolbar);
+            // Show the toolbar if we are in edit mode
+            if ($('.contentauthoring_edit_mode').length) {
+                $('.mceExternalToolbar').hide();
+                $('#inserterbar_widget #inserterbar_tinymce_container').show();
+                $toolbar.show();
+            }
             // Set timeOut as tinyMCE seems to need a little bit of additional time before we see all
             // of the content in the editor
             setTimeout(function() {
+                var $containingCell = $('.htmlblock_widget', $rootel).parents('.contentauthoring_cell_element');
+                $containingCell.removeClass('contentauthoring_init');
                 updateHeight();
-                $('.htmlblock_widget', $rootel).parents('.contentauthoring_cell_element').removeClass('contentauthoring_init');
+                $('.contentauthoring_cell_element_actions', $containingCell).removeClass('s3d-force-hidden').hide();
             }, 1000);
             startAutoSave();
         };
@@ -191,6 +202,7 @@ require(['jquery', 'sakai/sakai.api.core'], function($, sakai) {
                 if (editorId && tinyMCE.get(editorId)) {
                     // Render the page in view mode
                     var currentText = tinyMCE.get(editorId).getContent();
+                    currentText = sakai.api.Security.saneHTML(currentText);
                     $('#htmlblock_view_container', $rootel).html(currentText);
                     sakai.api.Util.renderMath($rootel);
                 }
@@ -263,6 +275,7 @@ require(['jquery', 'sakai/sakai.api.core'], function($, sakai) {
             // Fill up the textarea
             if (widgetData && widgetData.htmlblock) {
                 var processedContent = sakai.api.i18n.General.process(widgetData.htmlblock.content);
+                processedContent = sakai.api.Security.saneHTML(processedContent);
                 $('#htmlblock_view_container', $rootel).html(processedContent);
                 sakai.api.Util.renderMath($rootel);
                 $textarea.val(widgetData.htmlblock.content);

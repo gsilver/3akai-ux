@@ -40,6 +40,7 @@ require(["jquery", "underscore", "sakai/sakai.api.core"], function($, _, sakai){
         var contentPath = "";
         var currentPageShown = "";
         var versions = [];
+        var itemsBeforeScroll = 0;
 
         // Containers
         var versionsContainer = "#versions_container";
@@ -79,18 +80,21 @@ require(["jquery", "underscore", "sakai/sakai.api.core"], function($, _, sakai){
 
         var renderVersions = function(){
             $(versionsContainer, $rootel).html(sakai.api.Util.TemplateRenderer(versionsTemplate, {
+                'itemsBeforeScroll': itemsBeforeScroll,
                 "data": versions,
                 "sakai": sakai,
                 "currentPage": currentPageShown
             }));
-            $("#versions_carousel_container", $rootel).jcarousel({
-                animation: "slow",
-                easing: "swing",
-                scroll: 4,
-                start: 0,
-                initCallback: carouselBinding,
-                itemFallbackDimension: 123
-            });
+            if (versions.length) {
+                $('#versions_carousel_container', $rootel).jcarousel({
+                    animation: 'slow',
+                    easing: 'swing',
+                    scroll: 4,
+                    start: 0,
+                    initCallback: carouselBinding,
+                    itemFallbackDimension: 123
+                });
+            }
         };
 
         var setUsername = function(u, users) {
@@ -136,22 +140,31 @@ require(["jquery", "underscore", "sakai/sakai.api.core"], function($, _, sakai){
             contentPath = $.bbq.getState("content_path");
         };
 
-        var getVersionContent = function(versionId) {
+        var getVersionContent = function(versionId, callback) {
             var version = versions[versionId];
             if (!version.version) {
-                version.version = {
-                    "rows": [{
-                        "id": sakai.api.Util.generateWidgetId(),
-                        "columns": [{
-                            "width": 1,
-                            "elements": []
-                        }]
-                    }]
-                };
-            } else if (_.isString(version.version)) {
-                version.version = $.parseJSON(version.version);
+                var vurl = currentPageShown.pageSavePath + '/' + currentPageShown.saveRef + '.version.,' + version.versionId + ',.json';
+                sakai.api.Server.loadJSON(vurl, function(success, data) {
+                    if (success) {
+                        if (!data.version) {
+                            version.version = {
+                                'rows': [{
+                                    'id': sakai.api.Util.generateWidgetId(),
+                                    'columns': [{
+                                        'width': 1,
+                                        'elements': []
+                                    }]
+                                }]
+                            };
+                        } else if (_.isString(data.version)) {
+                            version.version = $.parseJSON(data.version);
+                        }
+                        callback(version);
+                    }
+                });
+            } else {
+                callback(version);
             }
-            return version;
         };
 
         var previewVersion = function(event){
@@ -160,19 +173,25 @@ require(["jquery", "underscore", "sakai/sakai.api.core"], function($, _, sakai){
                 $(".versions_selected", $rootel).removeClass("versions_selected");
                 $("#" + currentPageShown.ref).remove();
                 $(this).addClass("versions_selected");
-                var version = getVersionContent($(this).attr("data-versionId"));
-                var newPageShown = $.extend(true, {}, currentPageShown);
-                newPageShown.content = version.version;
-                newPageShown.isVersionHistory = true;
-                newPageShown.ref = currentPageShown.ref + "_previewversion";
-                $(window).trigger('showpage.contentauthoring.sakai', newPageShown);
+                getVersionContent($(this).attr('data-versionId'), showPageVersion);
             } else{
                 window.open(currentPageShown.pageSavePath + ".version.," + $(this).attr("data-version") + ",/" + $(this).attr("data-pooleditemname"), "_blank");
             }
         };
 
+        var showPageVersion = function(version) {
+            var newPageShown = $.extend(true, {}, currentPageShown);
+            newPageShown.content = version.version;
+            newPageShown.isVersionHistory = true;
+            newPageShown.ref = currentPageShown.ref + '_previewversion';
+            $(window).trigger('showpage.contentauthoring.sakai', newPageShown);
+        };
+
         var restoreVersion = function(e) {
-            var version = getVersionContent($(this).parent().attr("data-versionId"));
+            getVersionContent($(this).parent().attr('data-versionId'), saveRestoredVersion);
+        };
+
+        var saveRestoredVersion = function(version) {
             var toStore = version.version;
             currentPageShown.content = toStore;
             toStore.version = $.toJSON(version.version);
@@ -215,12 +234,14 @@ require(["jquery", "underscore", "sakai/sakai.api.core"], function($, _, sakai){
         };
 
         $(window).bind("init.versions.sakai", function(ev, cps){
-            if($("#content_profile_left_column").is(":visible")){
+            if ($('.s3d-page-column-left').is(':visible')) {
                 // There is a left hand navigation visible, versions widget will be smaller
                 $(versionsContainer, $rootel).removeClass("versions_without_left_hand_nav");
+                itemsBeforeScroll = 6;
             } else {
                 // No left hand navigation visible, versions widget will be wider
                 $(versionsContainer, $rootel).addClass("versions_without_left_hand_nav");
+                itemsBeforeScroll = 7;
             }
             currentPageShown = cps;
             $('.versions_widget', $rootel).show();
