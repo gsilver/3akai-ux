@@ -53,7 +53,7 @@
     {macro showMetadata(item, sakai)}
         {if item.usedin}<span class="featuredcontent_content_category_description"><span class="featuredcontent_content_usedin_icon featuredcontent_content_icon"></span>__MSG__USED_IN__ ${item.usedin} {if item.usedin == 1} __MSG__PLACE__{else} __MSG__PLACES__{/if}</span>{/if}
         {if item.commentcount}<span class="featuredcontent_content_category_description"><span class="featuredcontent_content_comments_icon featuredcontent_content_icon"></span><a href="/content#p=${item["_path"]|safeURL}/${item["sakai:pooled-content-file-name"]|safeURL}" class="s3d-bold s3d-regular-links">
-            <span class="s3d-aural-textXXX">${item["sakai:pooled-content-file-name"]} __MSG__HAS__</span> ${item.commentcount} {if item.commentcount == 1} __MSG__COMMENT__{else} __MSG__COMMENTS__{/if}</a></span>
+            <span class="s3d-aural-text">${item["sakai:pooled-content-file-name"]} __MSG__HAS2__</span> ${item.commentcount} {if item.commentcount == 1} __MSG__COMMENT__{else} __MSG__COMMENTS__{/if}</a></span>
         {/if}
     {/macro}
 
